@@ -64,7 +64,16 @@ def get_action(cfg, model, obs, task_label, processor=None):
     """Queries the model to get an action."""
     if cfg.model_family == "openvla":
         action = get_vla_action(
-            model, processor, cfg.pretrained_checkpoint, obs, task_label, cfg.unnorm_key, center_crop=cfg.center_crop
+            model,
+            processor,
+            cfg.pretrained_checkpoint,
+            obs,
+            task_label,
+            cfg.unnorm_key,
+            center_crop=cfg.center_crop,
+            decoder_type=getattr(cfg, "decoder_type", "ar"),
+            diffusion_steps=getattr(cfg, "diffusion_steps", 10),
+            diffusion_mask_schedule=getattr(cfg, "diffusion_mask_schedule", "linear"),
         )
         assert action.shape == (ACTION_DIM,)
     else:

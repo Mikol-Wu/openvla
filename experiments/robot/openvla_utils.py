@@ -124,7 +124,18 @@ def crop_and_resize(image, crop_scale, batch_size):
     return image
 
 
-def get_vla_action(vla, processor, base_vla_name, obs, task_label, unnorm_key, center_crop=False):
+def get_vla_action(
+    vla,
+    processor,
+    base_vla_name,
+    obs,
+    task_label,
+    unnorm_key,
+    center_crop=False,
+    decoder_type: str = "ar",
+    diffusion_steps: int = 10,
+    diffusion_mask_schedule: str = "linear",
+):
     """Generates an action with the VLA policy."""
     image = Image.fromarray(obs["full_image"])
     image = image.convert("RGB")
@@ -166,5 +177,12 @@ def get_vla_action(vla, processor, base_vla_name, obs, task_label, unnorm_key, c
     inputs = processor(prompt, image).to(DEVICE, dtype=torch.bfloat16)
 
     # Get action.
-    action = vla.predict_action(**inputs, unnorm_key=unnorm_key, do_sample=False)
+    action = vla.predict_action(
+        **inputs,
+        unnorm_key=unnorm_key,
+        do_sample=False,
+        decoder_type=decoder_type,
+        diffusion_steps=diffusion_steps,
+        diffusion_mask_schedule=diffusion_mask_schedule,
+    )
     return action

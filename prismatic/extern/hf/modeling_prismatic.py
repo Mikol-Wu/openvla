@@ -28,6 +28,7 @@ from transformers import AutoModelForCausalLM, PretrainedConfig, PreTrainedModel
 from transformers.modeling_outputs import ModelOutput
 
 from .configuration_prismatic import OpenVLAConfig, PrismaticConfig
+from prismatic.vla.diffusion_action_decoder import DiffusionActionDecoder
 
 # Get Logger
 logger = logging.getLogger(__name__)
@@ -504,9 +505,15 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         self.vocab_size = self.config.text_config.vocab_size - self.config.pad_to_multiple_of
 
     def predict_action(
-        self, input_ids: Optional[torch.LongTensor] = None, unnorm_key: Optional[str] = None, **kwargs: str
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        unnorm_key: Optional[str] = None,
+        **kwargs: str,
     ) -> np.ndarray:
-        """Thin wrapper around .generate() that decodes predicted actions and unnormalizes them."""
+        """Thin wrapper around decoding predicted actions and unnormalizes them."""
+        decoder_type = kwargs.pop("decoder_type", "ar")
+        diffusion_steps = int(kwargs.pop("diffusion_steps", 10))
+        diffusion_mask_schedule = kwargs.pop("diffusion_mask_schedule", "linear")
         # If the special empty token ('') does not already appear after the colon (':') token in the prompt
         # (after "OUT:" or "ASSISTANT:"), insert it to match the inputs seen at training time
         if not torch.all(input_ids[:, -1] == 29871):
@@ -514,11 +521,31 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
                 (input_ids, torch.unsqueeze(torch.Tensor([29871]).long(), dim=0).to(input_ids.device)), dim=1
             )
 
-        # Run VLA inference
-        generated_ids = self.generate(input_ids, max_new_tokens=self.get_action_dim(unnorm_key), **kwargs)
+        action_dim = self.get_action_dim(unnorm_key)
 
-        # Extract predicted action tokens and translate into (normalized) continuous actions
-        predicted_action_token_ids = generated_ids[0, -self.get_action_dim(unnorm_key) :].cpu().numpy()
+        if decoder_type == "diffusion":
+            attention_mask = kwargs.get("attention_mask", None)
+            pixel_values = kwargs.get("pixel_values", None)
+
+            decoder = DiffusionActionDecoder(mask_token_id=self.pad_token_id)
+            action_vocab_start = int(self.vocab_size - self.config.n_action_bins)
+            action_vocab_end = int(self.vocab_size)
+            predicted_action_token_ids = decoder.decode(
+                self,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                pixel_values=pixel_values,
+                action_dim=action_dim,
+                steps=diffusion_steps,
+                schedule=diffusion_mask_schedule,
+                action_vocab_start=action_vocab_start,
+                action_vocab_end=action_vocab_end,
+            )
+            predicted_action_token_ids = predicted_action_token_ids[0].cpu().numpy()
+        else:
+            # Autoregressive generation
+            generated_ids = self.generate(input_ids, max_new_tokens=action_dim, **kwargs)
+            predicted_action_token_ids = generated_ids[0, -action_dim:].cpu().numpy()
         discretized_actions = self.vocab_size - predicted_action_token_ids
         discretized_actions = np.clip(discretized_actions - 1, a_min=0, a_max=self.bin_centers.shape[0] - 1)
         normalized_actions = self.bin_centers[discretized_actions]

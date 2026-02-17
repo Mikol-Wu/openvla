@@ -15,6 +15,7 @@ from transformers import LlamaTokenizerFast
 from prismatic.models.vlms.prismatic import PrismaticVLM
 from prismatic.overwatch import initialize_overwatch
 from prismatic.vla.action_tokenizer import ActionTokenizer
+from prismatic.vla.diffusion_action_decoder import DiffusionActionDecoder
 
 # Initialize Overwatch =>> Wraps `logging.Logger`
 overwatch = initialize_overwatch(__name__)
@@ -34,7 +35,14 @@ class OpenVLA(PrismaticVLM):
 
     @torch.inference_mode()
     def predict_action(
-        self, image: Image, instruction: str, unnorm_key: Optional[str] = None, **kwargs: str
+        self,
+        image: Image,
+        instruction: str,
+        unnorm_key: Optional[str] = None,
+        decoder_type: str = "ar",
+        diffusion_steps: int = 10,
+        diffusion_mask_schedule: str = "linear",
+        **kwargs: str,
     ) -> np.ndarray:
         """
         Core function for VLA inference; maps input image and task instruction to continuous action (de-tokenizes).
@@ -54,7 +62,9 @@ class OpenVLA(PrismaticVLM):
         prompt_text = prompt_builder.get_prompt()
 
         # Prepare Inputs
-        input_ids = tokenizer(prompt_text, truncation=True, return_tensors="pt").input_ids.to(self.device)
+        tokenized = tokenizer(prompt_text, truncation=True, return_tensors="pt")
+        input_ids = tokenized.input_ids.to(self.device)
+        attention_mask = tokenized.attention_mask.to(self.device)
         if isinstance(tokenizer, LlamaTokenizerFast):
             # If the special empty token ('') does not already appear after the colon (':') token in the prompt
             # (after "OUT:" or "ASSISTANT:"), insert it to match the inputs seen at training time
@@ -74,20 +84,43 @@ class OpenVLA(PrismaticVLM):
         else:
             raise ValueError(f"Unsupported `pixel_values` type = {type(pixel_values)}")
 
-        # Invoke super().generate --> taps into `GenerationMixin` which (redirects) to `forward()`
-        autocast_dtype = self.llm_backbone.half_precision_dtype
-        with torch.autocast("cuda", dtype=autocast_dtype, enabled=self.enable_mixed_precision_training):
-            # fmt: off
-            generated_ids = super(PrismaticVLM, self).generate(
-                input_ids=input_ids,                            # Shape: [1, seq]
-                pixel_values=pixel_values,                      # Shape: [1, 3, res, res] or Dict[str, ...]
-                max_new_tokens=self.get_action_dim(unnorm_key),
-                **kwargs
-            )
-            # fmt: on
+        action_dim = self.get_action_dim(unnorm_key)
 
-        # Extract predicted action tokens and translate into (normalized) continuous actions
-        predicted_action_token_ids = generated_ids[0, -self.get_action_dim(unnorm_key) :]
+        if decoder_type == "diffusion":
+            mask_token_id = tokenizer.pad_token_id
+            if mask_token_id is None:
+                mask_token_id = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else 0
+
+            decoder = DiffusionActionDecoder(mask_token_id=mask_token_id)
+            action_vocab_start = int(self.action_tokenizer.tokenizer.vocab_size - self.action_tokenizer.n_bins)
+            action_vocab_end = int(self.action_tokenizer.tokenizer.vocab_size)
+
+            predicted_action_token_ids = decoder.decode(
+                self,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                pixel_values=pixel_values,
+                action_dim=action_dim,
+                steps=diffusion_steps,
+                schedule=diffusion_mask_schedule,
+                action_vocab_start=action_vocab_start,
+                action_vocab_end=action_vocab_end,
+            )[0]
+        else:
+            # Invoke super().generate --> taps into `GenerationMixin` which (redirects) to `forward()`
+            autocast_dtype = self.llm_backbone.half_precision_dtype
+            with torch.autocast("cuda", dtype=autocast_dtype, enabled=self.enable_mixed_precision_training):
+                # fmt: off
+                generated_ids = super(PrismaticVLM, self).generate(
+                    input_ids=input_ids,                            # Shape: [1, seq]
+                    pixel_values=pixel_values,                      # Shape: [1, 3, res, res] or Dict[str, ...]
+                    max_new_tokens=action_dim,
+                    **kwargs
+                )
+                # fmt: on
+
+            # Extract predicted action tokens and translate into (normalized) continuous actions
+            predicted_action_token_ids = generated_ids[0, -action_dim:]
         normalized_actions = self.action_tokenizer.decode_token_ids_to_actions(predicted_action_token_ids.cpu().numpy())
 
         # Un-normalize Actions

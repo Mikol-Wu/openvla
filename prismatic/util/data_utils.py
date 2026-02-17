@@ -5,7 +5,7 @@ General utilities and classes for facilitating data loading and collation.
 """
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Sequence, Tuple
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -97,6 +97,9 @@ class PaddedCollatorForActionPrediction:
     pad_token_id: int
     padding_side: str = "right"
     pixel_values_dtype: torch.dtype = torch.float32
+    action_mask_prob: float = 0.0
+    action_token_begin_idx: Optional[int] = None
+    mask_token_id: Optional[int] = None
 
     def __call__(self, instances: Sequence[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
@@ -130,6 +133,25 @@ class PaddedCollatorForActionPrediction:
             }
         else:
             raise ValueError(f"Unsupported `pixel_values` type = {type(pixel_values)}")
+
+        # Optionally mask a random subset of action tokens for diffusion-style training
+        if self.action_mask_prob > 0.0:
+            if self.action_token_begin_idx is None:
+                raise ValueError("action_token_begin_idx must be set when action_mask_prob > 0")
+            if not (0.0 <= self.action_mask_prob <= 1.0):
+                raise ValueError("action_mask_prob must be in [0,1]")
+
+            mask_token_id = self.mask_token_id if self.mask_token_id is not None else self.pad_token_id
+            action_pos = input_ids >= self.action_token_begin_idx
+            rand = torch.rand_like(input_ids.float())
+            mask = action_pos & (rand < self.action_mask_prob)
+
+            input_ids = input_ids.clone()
+            input_ids[mask] = mask_token_id
+
+            # If we use pad_token_id as mask, ensure these positions are still attended.
+            if mask_token_id == self.pad_token_id:
+                attention_mask = attention_mask | mask
 
         output = dict(
             pixel_values=pixel_values,

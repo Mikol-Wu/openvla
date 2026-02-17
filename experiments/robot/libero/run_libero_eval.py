@@ -19,11 +19,17 @@ Usage:
 
 import os
 import sys
-from dataclasses import dataclass
+import csv
+import json
+import time
+import subprocess
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
 import draccus
+import yaml
+import torch
 import numpy as np
 import tqdm
 from libero.libero import benchmark
@@ -52,7 +58,7 @@ from experiments.robot.robot_utils import (
 
 
 @dataclass
-class GenerateConfig:
+class EvalConfig:
     # fmt: off
 
     #################################################################################################################
@@ -84,15 +90,64 @@ class GenerateConfig:
 
     seed: int = 7                                    # Random Seed (for reproducibility)
 
+    # Decoder / evaluation extras
+    decoder_type: str = "ar"                         # ["ar", "diffusion"]
+    diffusion_steps: int = 10                        # used only when decoder_type=="diffusion"
+    diffusion_mask_schedule: str = "linear"          # ["linear", "cosine"]
+    action_tokenizer: str = "default"                # placeholder for future tokenizer switch
+    robustness_eval: bool = False                    # placeholder toggle for future perturbation eval
+
+    # fmt: on
+
+    @staticmethod
+    def from_yaml(path: Optional[Union[str, Path]]) -> Optional["EvalConfig"]:
+        if path is None:
+            return None
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return EvalConfig(**data)
+
     # fmt: on
 
 
+def _get_commit_hash() -> str:
+    try:
+        return (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).parents[2])
+            .decode()
+            .strip()
+        )
+    except Exception:
+        return "unknown"
+
+
+def _warn_env():
+    missing = []
+    for key in ["MUJOCO_EGL_DEVICE_ID", "CUDA_VISIBLE_DEVICES"]:
+        if os.environ.get(key) is None:
+            missing.append(key)
+    if missing:
+        print(f"[warn] Missing env vars: {missing}. Set them to select GPU/renderer.")
+
+
+def _count_params(model) -> Dict[str, int]:
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return {"total": total, "trainable": trainable}
+
+
 @draccus.wrap()
-def eval_libero(cfg: GenerateConfig) -> None:
+def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
+    if config_yaml:
+        loaded = EvalConfig.from_yaml(config_yaml)
+        if loaded is not None:
+            cfg = loaded
     assert cfg.pretrained_checkpoint is not None, "cfg.pretrained_checkpoint must not be None!"
     if "image_aug" in cfg.pretrained_checkpoint:
         assert cfg.center_crop, "Expecting `center_crop==True` because model was trained with image augmentations!"
     assert not (cfg.load_in_8bit and cfg.load_in_4bit), "Cannot use both 8-bit and 4-bit quantization!"
+
+    _warn_env()
 
     # Set random seed
     set_seed_everywhere(cfg.seed)
@@ -117,7 +172,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
         processor = get_processor(cfg)
 
     # Initialize local logging
-    run_id = f"EVAL-{cfg.task_suite_name}-{cfg.model_family}-{DATE_TIME}"
+    run_id = f"EVAL-{cfg.task_suite_name}-{cfg.model_family}-{cfg.decoder_type}-{DATE_TIME}"
     if cfg.run_id_note is not None:
         run_id += f"--{cfg.run_id_note}"
     os.makedirs(cfg.local_log_dir, exist_ok=True)
@@ -143,8 +198,16 @@ def eval_libero(cfg: GenerateConfig) -> None:
     # Get expected image dimensions
     resize_size = get_image_resize_size(cfg)
 
+    # Log model size
+    param_stats = _count_params(model)
+    log_file.write(f"Model params (total/trainable): {param_stats['total']}/{param_stats['trainable']}\n")
+    print(f"Model params (total/trainable): {param_stats['total']}/{param_stats['trainable']}")
+
     # Start evaluation
     total_episodes, total_successes = 0, 0
+    per_task_success = {}
+    per_step_times: list[float] = []
+    per_episode_times: list[float] = []
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
         # Get task
         task = task_suite.get_task(task_id)
@@ -170,6 +233,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
             # Setup
             t = 0
             replay_images = []
+            episode_start = time.perf_counter()
             if cfg.task_suite_name == "libero_spatial":
                 max_steps = 220  # longest training demo has 193 steps
             elif cfg.task_suite_name == "libero_object":
@@ -208,6 +272,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
                     }
 
                     # Query model to get action
+                    t0 = time.perf_counter()
                     action = get_action(
                         cfg,
                         model,
@@ -215,6 +280,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
                         task_description,
                         processor=processor,
                     )
+                    per_step_times.append(time.perf_counter() - t0)
 
                     # Normalize gripper action [0,1] -> [-1,+1] because the environment expects the latter
                     action = normalize_gripper_action(action, binarize=True)
@@ -239,6 +305,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
 
             task_episodes += 1
             total_episodes += 1
+            per_episode_times.append(time.perf_counter() - episode_start)
 
             # Save a replay video of the episode
             save_rollout_video(
@@ -255,7 +322,9 @@ def eval_libero(cfg: GenerateConfig) -> None:
             log_file.flush()
 
         # Log final results
-        print(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
+        task_rate = float(task_successes) / float(task_episodes)
+        per_task_success[task_description] = task_rate
+        print(f"Current task success rate: {task_rate}")
         print(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
         log_file.write(f"Current task success rate: {float(task_successes) / float(task_episodes)}\n")
         log_file.write(f"Current total success rate: {float(total_successes) / float(total_episodes)}\n")
@@ -270,6 +339,38 @@ def eval_libero(cfg: GenerateConfig) -> None:
 
     # Save local log file
     log_file.close()
+
+    # Persist structured results (json + csv)
+    results_dir = Path(cfg.local_log_dir)
+    results = {
+        "run_id": run_id,
+        "task_suite": cfg.task_suite_name,
+        "success_rate_total": float(total_successes) / float(total_episodes),
+        "per_task_success": per_task_success,
+        "num_episodes": total_episodes,
+        "seed": cfg.seed,
+        "pretrained_checkpoint": str(cfg.pretrained_checkpoint),
+        "commit_hash": _get_commit_hash(),
+        "decoder_type": cfg.decoder_type,
+        "diffusion_steps": cfg.diffusion_steps,
+        "diffusion_mask_schedule": cfg.diffusion_mask_schedule,
+        "action_tokenizer": cfg.action_tokenizer,
+        "robustness_eval": cfg.robustness_eval,
+        "model_params_total": param_stats["total"],
+        "model_params_trainable": param_stats["trainable"],
+        "avg_step_time_sec": float(np.mean(per_step_times)) if per_step_times else None,
+        "avg_episode_time_sec": float(np.mean(per_episode_times)) if per_episode_times else None,
+    }
+    json_path = results_dir / f"{run_id}.json"
+    csv_path = results_dir / f"{run_id}.csv"
+    with open(json_path, "w") as f:
+        json.dump(results, f, indent=2)
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["task", "success_rate"])
+        for k, v in per_task_success.items():
+            writer.writerow([k, v])
+        writer.writerow(["total_success_rate", results["success_rate_total"]])
 
     # Push total metrics and local log file to wandb
     if cfg.use_wandb:
