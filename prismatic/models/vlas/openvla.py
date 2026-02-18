@@ -95,7 +95,7 @@ class OpenVLA(PrismaticVLM):
             action_vocab_start = int(self.action_tokenizer.tokenizer.vocab_size - self.action_tokenizer.n_bins)
             action_vocab_end = int(self.action_tokenizer.tokenizer.vocab_size)
 
-            predicted_action_token_ids = decoder.decode(
+            predicted_action_token_ids = decoder.generate_action_tokens(
                 self,
                 input_ids=input_ids,
                 attention_mask=attention_mask,

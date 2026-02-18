@@ -530,7 +530,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             decoder = DiffusionActionDecoder(mask_token_id=self.pad_token_id)
             action_vocab_start = int(self.vocab_size - self.config.n_action_bins)
             action_vocab_end = int(self.vocab_size)
-            predicted_action_token_ids = decoder.decode(
+            predicted_action_token_ids = decoder.generate_action_tokens(
                 self,
                 input_ids=input_ids,
                 attention_mask=attention_mask,

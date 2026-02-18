@@ -125,3 +125,30 @@ class DiffusionActionDecoder:
             frozen = new_frozen
 
         return action_ids
+
+    @torch.no_grad()
+    def generate_action_tokens(
+        self,
+        model: nn.Module,
+        *,
+        input_ids: torch.LongTensor,
+        attention_mask: Optional[torch.Tensor],
+        pixel_values: Optional[torch.Tensor],
+        action_dim: int,
+        steps: int,
+        schedule: str,
+        action_vocab_start: int,
+        action_vocab_end: int,
+    ) -> torch.LongTensor:
+        """Alias with a clearer semantic name for action-token generation."""
+        return self.decode(
+            model,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            pixel_values=pixel_values,
+            action_dim=action_dim,
+            steps=steps,
+            schedule=schedule,
+            action_vocab_start=action_vocab_start,
+            action_vocab_end=action_vocab_end,
+        )

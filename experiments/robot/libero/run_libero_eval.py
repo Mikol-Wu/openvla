@@ -354,6 +354,7 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
         "decoder_type": cfg.decoder_type,
         "diffusion_steps": cfg.diffusion_steps,
         "diffusion_mask_schedule": cfg.diffusion_mask_schedule,
+        "mask_schedule": cfg.diffusion_mask_schedule,
         "action_tokenizer": cfg.action_tokenizer,
         "robustness_eval": cfg.robustness_eval,
         "model_params_total": param_stats["total"],

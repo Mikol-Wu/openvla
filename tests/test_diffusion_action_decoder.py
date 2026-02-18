@@ -40,7 +40,7 @@ def test_diffusion_decoder_shape_and_range():
     input_ids = torch.randint(0, vocab_size, (bsz, prompt_len))
     attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
 
-    action_ids = decoder.decode(
+    action_ids = decoder.generate_action_tokens(
         model,
         input_ids=input_ids,
         attention_mask=attention_mask,
@@ -68,7 +68,7 @@ def test_diffusion_decoder_k1_matches_one_shot():
     input_ids = torch.randint(0, vocab_size, (bsz, prompt_len))
     attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
 
-    out_ids = decoder.decode(
+    out_ids = decoder.generate_action_tokens(
         model,
         input_ids=input_ids,
         attention_mask=attention_mask,
