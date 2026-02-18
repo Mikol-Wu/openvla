@@ -1,0 +1,30 @@
+suite: libero_spatial
+model_family: openvla
+center_crop: true
+num_trials_per_task: 50
+seeds: [7, 13, 21]
+
+local_log_dir: ./experiments/logs
+output_dir: ./experiments/robot/libero/exp_results
+run_id_prefix: matrix
+
+pretrained_checkpoint:
+  baseline_ar: openvla/openvla-7b-finetuned-libero-spatial
+  diffusion:
+    masking_on: openvla/openvla-7b-finetuned-libero-spatial
+    masking_off: openvla/openvla-7b-finetuned-libero-spatial
+
+matrix:
+  diffusion_steps: [1, 5, 10]
+  mask_schedules: ["linear", "cosine"]
+  train_token_masking: ["on", "off"]
+
+robustness_eval: true
+robustness:
+  observation_noise_sigma: 8.0
+  brightness_jitter: 0.0
+  contrast_jitter: 0.0
+  brightness_jitter_prob: 1.0
+  instruction_dropout_prob: 0.0
+  instruction_dropout_mode: drop
+  instruction_dropout_mask_token: "[MASK]"

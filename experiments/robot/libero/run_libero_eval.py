@@ -95,6 +95,7 @@ class EvalConfig:
     diffusion_steps: int = 10                        # used only when decoder_type=="diffusion"
     diffusion_mask_schedule: str = "linear"          # ["linear", "cosine"]
     action_tokenizer: str = "default"                # placeholder for future tokenizer switch
+    train_token_masking: bool = False                # whether checkpoint used action token masking during training
 
     #################################################################################################################
     # Robustness eval (optional perturbations)
@@ -489,6 +490,7 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
         "diffusion_mask_schedule": cfg.diffusion_mask_schedule,
         "mask_schedule": cfg.diffusion_mask_schedule,
         "action_tokenizer": cfg.action_tokenizer,
+        "train_token_masking": cfg.train_token_masking,
         "robustness_eval": cfg.robustness_eval,
         "robustness_config": robustness_config,
         "model_params_total": param_stats["total"],
