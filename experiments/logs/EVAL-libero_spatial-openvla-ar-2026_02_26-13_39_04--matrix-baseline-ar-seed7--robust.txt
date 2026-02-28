@@ -1,0 +1,559 @@
+Task suite: libero_spatial
+Model params (total/trainable): 7541237184/7541237184
+
+=== clean ===
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 1...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=1--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 1
+# successes: 1 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 2...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=2--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 2
+# successes: 2 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 3...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=3--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 3
+# successes: 3 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 4...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=4--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 4
+# successes: 4 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 5...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=5--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 5
+# successes: 5 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 6...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=6--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 6
+# successes: 6 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 7...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=7--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 7
+# successes: 7 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 8...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=8--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 8
+# successes: 8 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 9...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=9--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 9
+# successes: 9 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 10...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=10--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 10
+# successes: 10 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 11...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=11--success=False--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: False
+# episodes completed so far: 11
+# successes: 10 (90.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 12...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=12--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 12
+# successes: 11 (91.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 13...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=13--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 13
+# successes: 12 (92.3%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 14...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=14--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 14
+# successes: 13 (92.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 15...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=15--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 15
+# successes: 14 (93.3%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 16...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=16--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 16
+# successes: 15 (93.8%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 17...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=17--success=False--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: False
+# episodes completed so far: 17
+# successes: 15 (88.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 18...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=18--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 18
+# successes: 16 (88.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 19...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=19--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 19
+# successes: 17 (89.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 20...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=20--success=False--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: False
+# episodes completed so far: 20
+# successes: 17 (85.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 21...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=21--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 21
+# successes: 18 (85.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 22...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=22--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 22
+# successes: 19 (86.4%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 23...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=23--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 23
+# successes: 20 (87.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 24...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=24--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 24
+# successes: 21 (87.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 25...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=25--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 25
+# successes: 22 (88.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 26...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=26--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 26
+# successes: 23 (88.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 27...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=27--success=False--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: False
+# episodes completed so far: 27
+# successes: 23 (85.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 28...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=28--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 28
+# successes: 24 (85.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 29...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=29--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 29
+# successes: 25 (86.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 30...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=30--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 30
+# successes: 26 (86.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 31...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=31--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 31
+# successes: 27 (87.1%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 32...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=32--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 32
+# successes: 28 (87.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 33...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=33--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 33
+# successes: 29 (87.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 34...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=34--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 34
+# successes: 30 (88.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 35...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=35--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 35
+# successes: 31 (88.6%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 36...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=36--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 36
+# successes: 32 (88.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 37...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=37--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 37
+# successes: 33 (89.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 38...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=38--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 38
+# successes: 34 (89.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 39...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=39--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 39
+# successes: 35 (89.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 40...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=40--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 40
+# successes: 36 (90.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 41...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=41--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 41
+# successes: 37 (90.2%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 42...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=42--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 42
+# successes: 38 (90.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 43...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=43--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 43
+# successes: 39 (90.7%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 44...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=44--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 44
+# successes: 40 (90.9%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 45...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=45--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 45
+# successes: 41 (91.1%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 46...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=46--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 46
+# successes: 42 (91.3%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 47...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=47--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 47
+# successes: 43 (91.5%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 48...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=48--success=False--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: False
+# episodes completed so far: 48
+# successes: 43 (89.6%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 49...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=49--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 49
+# successes: 44 (89.8%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 50...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=50--success=True--task=pick_up_the_black_bowl_between_the_plate_and_the_r.mp4
+Success: True
+# episodes completed so far: 50
+# successes: 45 (90.0%)
+Current task success rate: 0.9
+Current total success rate: 0.9
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 1...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=51--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 51
+# successes: 46 (90.2%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 2...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=52--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 52
+# successes: 47 (90.4%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 3...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=53--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 53
+# successes: 48 (90.6%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 4...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=54--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 54
+# successes: 49 (90.7%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 5...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=55--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 55
+# successes: 50 (90.9%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 6...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=56--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 56
+# successes: 51 (91.1%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 7...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=57--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 57
+# successes: 52 (91.2%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 8...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=58--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 58
+# successes: 53 (91.4%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 9...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=59--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 59
+# successes: 54 (91.5%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 10...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=60--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 60
+# successes: 55 (91.7%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 11...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=61--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 61
+# successes: 56 (91.8%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 12...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=62--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 62
+# successes: 57 (91.9%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 13...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=63--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 63
+# successes: 58 (92.1%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 14...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=64--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 64
+# successes: 59 (92.2%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 15...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=65--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 65
+# successes: 60 (92.3%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 16...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=66--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 66
+# successes: 61 (92.4%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 17...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=67--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 67
+# successes: 62 (92.5%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 18...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=68--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 68
+# successes: 63 (92.6%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 19...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=69--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 69
+# successes: 64 (92.8%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 20...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=70--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 70
+# successes: 65 (92.9%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 21...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=71--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 71
+# successes: 66 (93.0%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 22...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=72--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 72
+# successes: 67 (93.1%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 23...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=73--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 73
+# successes: 68 (93.2%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 24...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=74--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 74
+# successes: 69 (93.2%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 25...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=75--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 75
+# successes: 70 (93.3%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 26...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=76--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 76
+# successes: 71 (93.4%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 27...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=77--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 77
+# successes: 72 (93.5%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 28...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=78--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 78
+# successes: 73 (93.6%)
+
+Task: pick up the black bowl next to the ramekin and place it on the plate
+Starting episode 29...
+Saved rollout MP4 at path ./rollouts/2026_02_26/2026_02_26-13_39_04--episode=79--success=True--task=pick_up_the_black_bowl_next_to_the_ramekin_and_pla.mp4
+Success: True
+# episodes completed so far: 79
+# successes: 74 (93.7%)

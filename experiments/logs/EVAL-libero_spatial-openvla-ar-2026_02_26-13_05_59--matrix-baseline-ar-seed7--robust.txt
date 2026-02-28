@@ -1,0 +1,4 @@
+Task suite: libero_spatial
+Model params (total/trainable): 7541237184/7541237184
+
+=== clean ===
