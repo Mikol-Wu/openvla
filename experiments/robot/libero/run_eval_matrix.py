@@ -197,8 +197,9 @@ def _run_eval(run_cfg: Dict[str, Any], repo_root: Path, config_dir: Path, runs_l
     yaml_path = _write_config_yaml(config_dir, run_cfg)
     cmd = [
         sys.executable,
-        "experiments/robot/libero/run_libero_eval.py",
-        "--config_yaml",
+        # "experiments/experiments/robot/libero/run_libero_eval.py",
+        'experiments/robot/libero/run_libero_eval.py',
+        "--config_path",
         str(yaml_path),
     ]
     start_ts = time.time()
@@ -404,7 +405,7 @@ def main() -> None:
     parser.add_argument("--skip_existing", action="store_true", help="Skip runs with existing results")
     args = parser.parse_args()
 
-    repo_root = Path(__file__).parents[2]
+    repo_root = Path(__file__).parents[3]
     cfg = _load_yaml(repo_root / args.config)
 
     log_dir = Path(cfg.get("local_log_dir", "./experiments/logs"))
@@ -425,8 +426,8 @@ def main() -> None:
                 yaml_path = _write_config_yaml(config_dir, run_cfg)
                 cmd = [
                     sys.executable,
-                    "experiments/robot/libero/run_libero_eval.py",
-                    "--config_yaml",
+                    "experiments/experiments/robot/libero/run_libero_eval.py",
+                    "--config_path",
                     str(yaml_path),
                 ]
                 print(" ".join(cmd))
