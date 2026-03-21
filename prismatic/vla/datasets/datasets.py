@@ -34,10 +34,25 @@ class RLDSBatchTransform:
     image_transform: ImageTransform
     prompt_builder_fn: Type[PromptBuilder]
     predict_stop_token: bool = True
+    action_chunk_size: int = 1
+    future_action_discount: float = 1.0
+
+    def _extract_action_chunk(self, action: np.ndarray) -> np.ndarray:
+        action = np.asarray(action, dtype=np.float32)
+        if action.ndim == 1:
+            action = action[None, :]
+        action_chunk = action[: self.action_chunk_size]
+        if action_chunk.shape[0] != self.action_chunk_size:
+            raise ValueError(
+                f"Expected action chunk of length {self.action_chunk_size}, but got shape {action_chunk.shape}."
+            )
+        return action_chunk
 
     def __call__(self, rlds_batch: Dict[str, Any]) -> Dict[str, Any]:
         """Converts a RLDS batch to the format expected by the OpenVLA collator/models."""
-        dataset_name, action = rlds_batch["dataset_name"], rlds_batch["action"][0]
+        dataset_name = rlds_batch["dataset_name"]
+        action_chunk = self._extract_action_chunk(rlds_batch["action"][0])
+        flat_action = action_chunk.reshape(-1)
         img = Image.fromarray(rlds_batch["observation"]["image_primary"][0])
         lang = rlds_batch["task"]["language_instruction"].decode().lower()
 
@@ -45,7 +60,7 @@ class RLDSBatchTransform:
         prompt_builder = self.prompt_builder_fn("openvla")
         conversation = [
             {"from": "human", "value": f"What action should the robot take to {lang}?"},
-            {"from": "gpt", "value": self.action_tokenizer(action)},
+            {"from": "gpt", "value": self.action_tokenizer(flat_action)},
         ]
         for turn in conversation:
             prompt_builder.add_turn(turn["from"], turn["value"])
@@ -60,11 +75,23 @@ class RLDSBatchTransform:
         pixel_values = self.image_transform(img)
 
         # [CRITICAL] We do not want to take the loss for anything but the predicted action tokens!
-        labels[: -(len(action) + 1)] = IGNORE_INDEX
+        labels[: -(flat_action.shape[0] + 1)] = IGNORE_INDEX
         if not self.predict_stop_token:
             labels[-1] = IGNORE_INDEX
 
-        return dict(pixel_values=pixel_values, input_ids=input_ids, labels=labels, dataset_name=dataset_name)
+        future_action_weights = self.future_action_discount ** np.arange(action_chunk.shape[0], dtype=np.float32)
+        action_loss_weights = np.repeat(future_action_weights[:, None], action_chunk.shape[1], axis=1)
+
+        return dict(
+            pixel_values=pixel_values,
+            input_ids=input_ids,
+            labels=labels,
+            dataset_name=dataset_name,
+            continuous_actions=torch.tensor(action_chunk, dtype=torch.float32),
+            action_loss_weights=torch.tensor(action_loss_weights, dtype=torch.float32),
+            action_chunk_size=torch.tensor(action_chunk.shape[0], dtype=torch.long),
+            action_dim=torch.tensor(action_chunk.shape[1], dtype=torch.long),
+        )
 
 
 class RLDSDataset(IterableDataset):
@@ -77,9 +104,15 @@ class RLDSDataset(IterableDataset):
         shuffle_buffer_size: int = 256_000,
         train: bool = True,
         image_aug: bool = False,
+        action_chunk_size: int = 1,
     ) -> None:
         """Lightweight wrapper around RLDS TFDS Pipeline for use with PyTorch/OpenVLA Data Loaders."""
-        self.data_root_dir, self.data_mix, self.batch_transform = data_root_dir, data_mix, batch_transform
+        if action_chunk_size < 1:
+            raise ValueError(f"action_chunk_size must be >= 1, got {action_chunk_size}")
+        self.data_root_dir = data_root_dir
+        self.data_mix = data_mix
+        self.batch_transform = batch_transform
+        self.action_chunk_size = action_chunk_size
 
         # Configure RLDS Dataset(s)
         if self.data_mix in OXE_NAMED_MIXTURES:
@@ -100,8 +133,8 @@ class RLDSDataset(IterableDataset):
         )
         rlds_config = dict(
             traj_transform_kwargs=dict(
-                window_size=1,                                      # If we wanted to feed / predict more than one step
-                future_action_window_size=0,                        # For action chunking
+                window_size=1,                                      # Condition on the current observation only
+                future_action_window_size=self.action_chunk_size - 1,  # Future chunk supervision horizon
                 skip_unlabeled=True,                                # Skip trajectories without language labels
                 goal_relabeling_strategy="uniform",                 # Goals are currently unused
             ),

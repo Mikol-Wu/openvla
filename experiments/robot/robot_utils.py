@@ -60,8 +60,8 @@ def get_image_resize_size(cfg):
     return resize_size
 
 
-def get_action(cfg, model, obs, task_label, processor=None):
-    """Queries the model to get an action."""
+def get_action_flow(cfg, model, obs, task_label, processor=None):
+    """Queries the model to get a single action or a short receding-horizon action flow."""
     if cfg.model_family == "openvla":
         action = get_vla_action(
             model,
@@ -74,10 +74,21 @@ def get_action(cfg, model, obs, task_label, processor=None):
             decoder_type=getattr(cfg, "decoder_type", "ar"),
             diffusion_steps=getattr(cfg, "diffusion_steps", 10),
             diffusion_mask_schedule=getattr(cfg, "diffusion_mask_schedule", "linear"),
+            action_chunk_size=getattr(cfg, "action_chunk_size", 1) or 1,
         )
-        assert action.shape == (ACTION_DIM,)
+        if action.ndim == 1:
+            action = action[None, :]
+        assert action.shape[1] == ACTION_DIM
     else:
         raise ValueError("Unexpected `model_family` found in config.")
+    return action
+
+
+def get_action(cfg, model, obs, task_label, processor=None):
+    """Queries the model to get the current action only."""
+    action_flow = get_action_flow(cfg, model, obs, task_label, processor=processor)
+    action = action_flow[0]
+    assert action.shape == (ACTION_DIM,)
     return action
 
 

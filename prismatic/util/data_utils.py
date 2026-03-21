@@ -161,4 +161,9 @@ class PaddedCollatorForActionPrediction:
         )
         if dataset_names is not None:
             output["dataset_names"] = dataset_names
+
+        for key in ("continuous_actions", "action_loss_weights", "action_chunk_size", "action_dim"):
+            if key in instances[0]:
+                output[key] = torch.stack([instance[key] for instance in instances])
+
         return output

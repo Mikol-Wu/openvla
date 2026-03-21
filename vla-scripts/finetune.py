@@ -26,8 +26,10 @@ from pathlib import Path
 from typing import Optional
 
 import draccus
+import numpy as np
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 import tqdm
 from accelerate import PartialState
 from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
@@ -40,7 +42,7 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 
 import wandb
 from prismatic.models.backbones.llm.prompting import PurePromptBuilder, VicunaV15ChatPromptBuilder
-from prismatic.util.data_utils import PaddedCollatorForActionPrediction
+from prismatic.util.data_utils import IGNORE_INDEX, PaddedCollatorForActionPrediction
 from prismatic.vla.action_tokenizer import ActionTokenizer
 from prismatic.vla.datasets import RLDSBatchTransform, RLDSDataset
 from prismatic.vla.datasets.rlds.utils.data_utils import save_dataset_statistics
@@ -90,6 +92,11 @@ class FinetuneConfig:
     learning_rate: float = 5e-4                                     # Fine-tuning learning rate
     grad_accumulation_steps: int = 1                                # Gradient accumulation steps
     image_aug: bool = True                                          # Whether to train with image augmentations
+    action_chunk_size: int = 8                                      # RHAF horizon length H
+    action_mask_prob: float = 0.15                                  # Random action-token masking for diffusion decoding
+    use_continuous_action_aux_loss: bool = True                     # Add continuous alignment auxiliary loss
+    continuous_action_loss_weight: float = 0.2                      # Weight for the continuous alignment loss
+    future_action_discount: float = 0.85                            # Discount applied to future chunk supervision
     shuffle_buffer_size: int = 100_000                              # Dataloader shuffle buffer size (can reduce if OOM)
     save_latest_checkpoint_only: bool = True                        # Whether to save only one checkpoint per run and
                                                                     #   continually overwrite the latest checkpoint
@@ -110,6 +117,77 @@ class FinetuneConfig:
     # fmt: on
 
 
+
+def _build_action_token_lookup(
+    action_tokenizer: ActionTokenizer, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor]:
+    action_token_ids = np.arange(action_tokenizer.action_token_begin_idx + 1, action_tokenizer.tokenizer.vocab_size)
+    action_token_centers = action_tokenizer.decode_token_ids_to_actions(action_token_ids)
+    return (
+        torch.tensor(action_token_ids, device=device, dtype=torch.long),
+        torch.tensor(action_token_centers, device=device, dtype=torch.float32),
+    )
+
+
+def _compute_weighted_token_loss(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    action_loss_weights: torch.Tensor,
+    action_token_begin_idx: int,
+) -> torch.Tensor:
+    token_losses = F.cross_entropy(
+        logits.reshape(-1, logits.shape[-1]),
+        labels.reshape(-1),
+        ignore_index=IGNORE_INDEX,
+        reduction="none",
+    ).view_as(labels)
+
+    valid_mask = labels.ne(IGNORE_INDEX)
+    weights = valid_mask.float()
+    action_positions = labels > action_token_begin_idx
+    flat_action_weights = action_loss_weights.reshape(action_loss_weights.shape[0], -1).to(logits.device)
+
+    for batch_idx in range(labels.shape[0]):
+        positions = torch.nonzero(action_positions[batch_idx], as_tuple=False).squeeze(-1)
+        if positions.numel() == 0:
+            continue
+        n_positions = min(positions.numel(), flat_action_weights.shape[1])
+        weights[batch_idx, positions[:n_positions]] = flat_action_weights[batch_idx, :n_positions]
+
+    weighted_mask = weights * valid_mask
+    return (token_losses * weighted_mask).sum() / weighted_mask.sum().clamp_min(1.0)
+
+
+def _compute_continuous_action_aux_loss(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    continuous_actions: torch.Tensor,
+    action_loss_weights: torch.Tensor,
+    action_token_begin_idx: int,
+    action_token_ids: torch.Tensor,
+    action_token_centers: torch.Tensor,
+) -> torch.Tensor:
+    action_positions = labels > action_token_begin_idx
+    action_logits = logits.index_select(dim=-1, index=action_token_ids)
+    flat_targets = continuous_actions.reshape(continuous_actions.shape[0], -1).to(logits.device, dtype=logits.dtype)
+    flat_weights = action_loss_weights.reshape(action_loss_weights.shape[0], -1).to(logits.device, dtype=logits.dtype)
+
+    loss_sum = torch.zeros((), device=logits.device, dtype=logits.dtype)
+    weight_sum = torch.zeros((), device=logits.device, dtype=logits.dtype)
+    for batch_idx in range(labels.shape[0]):
+        positions = torch.nonzero(action_positions[batch_idx], as_tuple=False).squeeze(-1)
+        if positions.numel() == 0:
+            continue
+        n_positions = min(positions.numel(), flat_targets.shape[1])
+        probs = torch.softmax(action_logits[batch_idx, positions[:n_positions]], dim=-1)
+        expected_actions = probs @ action_token_centers
+        weights = flat_weights[batch_idx, :n_positions]
+        loss_sum += (torch.abs(expected_actions - flat_targets[batch_idx, :n_positions]) * weights).sum()
+        weight_sum += weights.sum()
+
+    return loss_sum / weight_sum.clamp_min(1e-6)
+
+
 @draccus.wrap()
 def finetune(cfg: FinetuneConfig) -> None:
     print(f"Fine-tuning OpenVLA Model `{cfg.vla_path}` on `{cfg.dataset_name}`")
@@ -126,6 +204,9 @@ def finetune(cfg: FinetuneConfig) -> None:
         f"+b{cfg.batch_size * cfg.grad_accumulation_steps}"
         f"+lr-{cfg.learning_rate}"
     )
+    exp_id += f"+rhaf-h{cfg.action_chunk_size}+mask-{cfg.action_mask_prob}+fd-{cfg.future_action_discount}"
+    if cfg.use_continuous_action_aux_loss:
+        exp_id += f"+cont-{cfg.continuous_action_loss_weight}"
     if cfg.use_lora:
         exp_id += f"+lora-r{cfg.lora_rank}+dropout-{cfg.lora_dropout}"
     if cfg.use_quantization:
@@ -169,6 +250,14 @@ def finetune(cfg: FinetuneConfig) -> None:
     else:
         vla = vla.to(device_id)
 
+    if cfg.action_chunk_size < 1:
+        raise ValueError(f"action_chunk_size must be >= 1, got {cfg.action_chunk_size}")
+    vla.config.action_chunk_size = cfg.action_chunk_size
+    vla.config.action_mask_prob = cfg.action_mask_prob
+    vla.config.use_continuous_action_aux_loss = cfg.use_continuous_action_aux_loss
+    vla.config.continuous_action_loss_weight = cfg.continuous_action_loss_weight
+    vla.config.future_action_discount = cfg.future_action_discount
+
     # [LoRA] Wrap Model w/ PEFT `LoraConfig` =>> by default we set `target_modules=all-linear`
     if cfg.use_lora:
         lora_config = LoraConfig(
@@ -190,6 +279,9 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # Create Action Tokenizer
     action_tokenizer = ActionTokenizer(processor.tokenizer)
+    action_token_ids, action_token_centers = _build_action_token_lookup(
+        action_tokenizer, torch.device(f"cuda:{device_id}")
+    )
 
     # Load Fine-tuning Dataset =>> note that we use an RLDS-formatted dataset following Open X-Embodiment by default.
     #   =>> If you want to use a non-RLDS dataset (e.g., a standard PyTorch Dataset) see the following commented block.
@@ -211,6 +303,8 @@ def finetune(cfg: FinetuneConfig) -> None:
         processor.tokenizer,
         image_transform=processor.image_processor.apply_transform,
         prompt_builder_fn=PurePromptBuilder if "v01" not in cfg.vla_path else VicunaV15ChatPromptBuilder,
+        action_chunk_size=cfg.action_chunk_size,
+        future_action_discount=cfg.future_action_discount,
     )
     vla_dataset = RLDSDataset(
         cfg.data_root_dir,
@@ -219,6 +313,7 @@ def finetune(cfg: FinetuneConfig) -> None:
         resize_resolution=tuple(vla.module.config.image_sizes),
         shuffle_buffer_size=cfg.shuffle_buffer_size,
         image_aug=cfg.image_aug,
+        action_chunk_size=cfg.action_chunk_size,
     )
 
     # [Important] Save Dataset Statistics =>> used to de-normalize actions for inference!
@@ -227,7 +322,12 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # Create Collator and DataLoader
     collator = PaddedCollatorForActionPrediction(
-        processor.tokenizer.model_max_length, processor.tokenizer.pad_token_id, padding_side="right"
+        processor.tokenizer.model_max_length,
+        processor.tokenizer.pad_token_id,
+        padding_side="right",
+        action_mask_prob=cfg.action_mask_prob,
+        action_token_begin_idx=action_tokenizer.action_token_begin_idx,
+        mask_token_id=processor.tokenizer.pad_token_id,
     )
     dataloader = DataLoader(
         vla_dataset,
@@ -236,6 +336,7 @@ def finetune(cfg: FinetuneConfig) -> None:
         collate_fn=collator,
         num_workers=0,  # Important =>> Set to 0 if using RLDS; TFDS rolls its own parallelism!
     )
+    n_patch_tokens = vla.module.vision_backbone.featurizer.patch_embed.num_patches
 
     # Initialize Logging =>> W&B
     if distributed_state.is_main_process:
@@ -243,6 +344,8 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # Deque to store recent train metrics (used for computing smoothened metrics for gradient accumulation)
     recent_losses = deque(maxlen=cfg.grad_accumulation_steps)
+    recent_token_losses = deque(maxlen=cfg.grad_accumulation_steps)
+    recent_continuous_aux_losses = deque(maxlen=cfg.grad_accumulation_steps)
     recent_action_accuracies = deque(maxlen=cfg.grad_accumulation_steps)
     recent_l1_losses = deque(maxlen=cfg.grad_accumulation_steps)
 
@@ -256,9 +359,31 @@ def finetune(cfg: FinetuneConfig) -> None:
                     input_ids=batch["input_ids"].to(device_id),
                     attention_mask=batch["attention_mask"].to(device_id),
                     pixel_values=batch["pixel_values"].to(torch.bfloat16).to(device_id),
-                    labels=batch["labels"],
+                    labels=None,
                 )
-                loss = output.loss
+                aligned_logits = output.logits[:, n_patch_tokens:-1].float()
+                aligned_labels = batch["labels"][:, 1:].to(device_id)
+                action_loss_weights = batch["action_loss_weights"].to(device_id)
+                continuous_actions = batch["continuous_actions"].to(device_id)
+
+                token_loss = _compute_weighted_token_loss(
+                    aligned_logits,
+                    aligned_labels,
+                    action_loss_weights,
+                    action_tokenizer.action_token_begin_idx,
+                )
+                continuous_action_aux_loss = torch.zeros((), device=aligned_logits.device, dtype=aligned_logits.dtype)
+                if cfg.use_continuous_action_aux_loss:
+                    continuous_action_aux_loss = _compute_continuous_action_aux_loss(
+                        aligned_logits,
+                        aligned_labels,
+                        continuous_actions,
+                        action_loss_weights,
+                        action_tokenizer.action_token_begin_idx,
+                        action_token_ids,
+                        action_token_centers,
+                    )
+                loss = token_loss + cfg.continuous_action_loss_weight * continuous_action_aux_loss
 
             # Normalize loss to account for gradient accumulation
             normalized_loss = loss / cfg.grad_accumulation_steps
@@ -267,26 +392,30 @@ def finetune(cfg: FinetuneConfig) -> None:
             normalized_loss.backward()
 
             # Compute Accuracy and L1 Loss for Logging
-            action_logits = output.logits[:, vla.module.vision_backbone.featurizer.patch_embed.num_patches : -1]
-            action_preds = action_logits.argmax(dim=2)
-            action_gt = batch["labels"][:, 1:].to(action_preds.device)
+            action_preds = aligned_logits.argmax(dim=2)
+            action_gt = aligned_labels
             mask = action_gt > action_tokenizer.action_token_begin_idx
 
             # Compute Accuracy
             correct_preds = (action_preds == action_gt) & mask
-            action_accuracy = correct_preds.sum().float() / mask.sum().float()
+            action_accuracy = correct_preds.sum().float() / mask.sum().float().clamp_min(1.0)
 
             # Compute L1 Loss on Predicted (Continuous) Actions
-            continuous_actions_pred = torch.tensor(
-                action_tokenizer.decode_token_ids_to_actions(action_preds[mask].cpu().numpy())
-            )
-            continuous_actions_gt = torch.tensor(
-                action_tokenizer.decode_token_ids_to_actions(action_gt[mask].cpu().numpy())
-            )
-            action_l1_loss = torch.nn.functional.l1_loss(continuous_actions_pred, continuous_actions_gt)
+            if mask.any():
+                continuous_actions_pred = torch.tensor(
+                    action_tokenizer.decode_token_ids_to_actions(action_preds[mask].cpu().numpy())
+                )
+                continuous_actions_gt = torch.tensor(
+                    action_tokenizer.decode_token_ids_to_actions(action_gt[mask].cpu().numpy())
+                )
+                action_l1_loss = F.l1_loss(continuous_actions_pred, continuous_actions_gt)
+            else:
+                action_l1_loss = torch.zeros((), dtype=torch.float32)
 
             # Store recent train metrics
             recent_losses.append(loss.item())
+            recent_token_losses.append(token_loss.item())
+            recent_continuous_aux_losses.append(continuous_action_aux_loss.item())
             recent_action_accuracies.append(action_accuracy.item())
             recent_l1_losses.append(action_l1_loss.item())
 
@@ -297,6 +426,8 @@ def finetune(cfg: FinetuneConfig) -> None:
             #   =>> Equal to current step metrics when not using gradient accumulation
             #   =>> Otherwise, equal to the average of metrics observed over micro-batches used for gradient accumulation
             smoothened_loss = sum(recent_losses) / len(recent_losses)
+            smoothened_token_loss = sum(recent_token_losses) / len(recent_token_losses)
+            smoothened_continuous_aux_loss = sum(recent_continuous_aux_losses) / len(recent_continuous_aux_losses)
             smoothened_action_accuracy = sum(recent_action_accuracies) / len(recent_action_accuracies)
             smoothened_l1_loss = sum(recent_l1_losses) / len(recent_l1_losses)
 
@@ -305,6 +436,8 @@ def finetune(cfg: FinetuneConfig) -> None:
                 wandb.log(
                     {
                         "train_loss": smoothened_loss,
+                        "token_loss": smoothened_token_loss,
+                        "continuous_action_aux_loss": smoothened_continuous_aux_loss,
                         "action_accuracy": smoothened_action_accuracy,
                         "l1_loss": smoothened_l1_loss,
                     },
@@ -340,6 +473,11 @@ def finetune(cfg: FinetuneConfig) -> None:
                     )
                     merged_vla = PeftModel.from_pretrained(base_vla, adapter_dir)
                     merged_vla = merged_vla.merge_and_unload()
+                    merged_vla.config.action_chunk_size = cfg.action_chunk_size
+                    merged_vla.config.action_mask_prob = cfg.action_mask_prob
+                    merged_vla.config.use_continuous_action_aux_loss = cfg.use_continuous_action_aux_loss
+                    merged_vla.config.continuous_action_loss_weight = cfg.continuous_action_loss_weight
+                    merged_vla.config.future_action_discount = cfg.future_action_discount
                     if distributed_state.is_main_process:
                         if cfg.save_latest_checkpoint_only:
                             # Overwrite latest checkpoint

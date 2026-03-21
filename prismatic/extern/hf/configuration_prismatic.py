@@ -133,8 +133,19 @@ class OpenVLAConfig(PrismaticConfig):
         self,
         norm_stats: Optional[Dict[str, Dict[str, Dict[str, Dict[str, List[float]]]]]] = None,
         n_action_bins: int = 256,
+        action_chunk_size: int = 1,
+        action_mask_prob: float = 0.0,
+        use_continuous_action_aux_loss: bool = False,
+        continuous_action_loss_weight: float = 0.0,
+        future_action_discount: float = 1.0,
         **kwargs: str,
     ) -> None:
-        self.norm_stats, self.n_action_bins = norm_stats, n_action_bins
+        self.norm_stats = norm_stats
+        self.n_action_bins = n_action_bins
+        self.action_chunk_size = action_chunk_size
+        self.action_mask_prob = action_mask_prob
+        self.use_continuous_action_aux_loss = use_continuous_action_aux_loss
+        self.continuous_action_loss_weight = continuous_action_loss_weight
+        self.future_action_discount = future_action_discount
 
         super().__init__(**kwargs)

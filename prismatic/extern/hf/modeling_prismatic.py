@@ -504,16 +504,30 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         # Compute vocab size for de-tokenization -- revert added "multiple of"
         self.vocab_size = self.config.text_config.vocab_size - self.config.pad_to_multiple_of
 
+    @staticmethod
+    def _resolve_action_chunk_size(action_chunk_size: Optional[int]) -> int:
+        action_chunk_size = 1 if action_chunk_size is None else int(action_chunk_size)
+        if action_chunk_size < 1:
+            raise ValueError(f"action_chunk_size must be >= 1, got {action_chunk_size}")
+        return action_chunk_size
+
+    @staticmethod
+    def _reshape_action_flow(actions: np.ndarray, action_dim: int, action_chunk_size: int) -> np.ndarray:
+        return actions if action_chunk_size == 1 else actions.reshape(action_chunk_size, action_dim)
+
     def predict_action(
         self,
         input_ids: Optional[torch.LongTensor] = None,
         unnorm_key: Optional[str] = None,
+        action_chunk_size: Optional[int] = None,
         **kwargs: str,
     ) -> np.ndarray:
         """Thin wrapper around decoding predicted actions and unnormalizes them."""
         decoder_type = kwargs.pop("decoder_type", "ar")
         diffusion_steps = int(kwargs.pop("diffusion_steps", 10))
         diffusion_mask_schedule = kwargs.pop("diffusion_mask_schedule", "linear")
+        action_chunk_size = self._resolve_action_chunk_size(action_chunk_size)
+
         # If the special empty token ('') does not already appear after the colon (':') token in the prompt
         # (after "OUT:" or "ASSISTANT:"), insert it to match the inputs seen at training time
         if not torch.all(input_ids[:, -1] == 29871):
@@ -522,6 +536,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             )
 
         action_dim = self.get_action_dim(unnorm_key)
+        n_action_tokens = action_dim * action_chunk_size
 
         if decoder_type == "diffusion":
             attention_mask = kwargs.get("attention_mask", None)
@@ -535,7 +550,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 pixel_values=pixel_values,
-                action_dim=action_dim,
+                action_dim=n_action_tokens,
                 steps=diffusion_steps,
                 schedule=diffusion_mask_schedule,
                 action_vocab_start=action_vocab_start,
@@ -544,11 +559,13 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             predicted_action_token_ids = predicted_action_token_ids[0].cpu().numpy()
         else:
             # Autoregressive generation
-            generated_ids = self.generate(input_ids, max_new_tokens=action_dim, **kwargs)
-            predicted_action_token_ids = generated_ids[0, -action_dim:].cpu().numpy()
+            generated_ids = self.generate(input_ids, max_new_tokens=n_action_tokens, **kwargs)
+            predicted_action_token_ids = generated_ids[0, -n_action_tokens:].cpu().numpy()
+
         discretized_actions = self.vocab_size - predicted_action_token_ids
         discretized_actions = np.clip(discretized_actions - 1, a_min=0, a_max=self.bin_centers.shape[0] - 1)
         normalized_actions = self.bin_centers[discretized_actions]
+        normalized_actions = self._reshape_action_flow(normalized_actions, action_dim, action_chunk_size)
 
         # Unnormalize actions
         action_norm_stats = self.get_action_stats(unnorm_key)

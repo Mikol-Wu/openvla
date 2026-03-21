@@ -38,6 +38,12 @@ import wandb
 
 # Append current directory so that interpreter can find experiments.robot
 sys.path.append("../..")
+from experiments.robot.libero.chunking import (
+    ActionChunkEnsembler,
+    ensure_action_flow,
+    get_action_from_chunk,
+    should_replan,
+)
 from experiments.robot.libero.libero_utils import (
     get_libero_dummy_action,
     get_libero_env,
@@ -48,7 +54,7 @@ from experiments.robot.libero.libero_utils import (
 from experiments.robot.openvla_utils import get_processor
 from experiments.robot.robot_utils import (
     DATE_TIME,
-    get_action,
+    get_action_flow,
     get_image_resize_size,
     get_model,
     invert_gripper_action,
@@ -91,9 +97,13 @@ class EvalConfig:
     seed: int = 7                                    # Random Seed (for reproducibility)
 
     # Decoder / evaluation extras
-    decoder_type: str = "ar"                         # ["ar", "diffusion"]
-    diffusion_steps: int = 10                        # used only when decoder_type=="diffusion"
-    diffusion_mask_schedule: str = "linear"          # ["linear", "cosine"]
+    decoder_type: str = "diffusion"                  # ["ar", "diffusion"]
+    diffusion_steps: int = 5                         # used only when decoder_type=="diffusion"
+    diffusion_mask_schedule: str = "cosine"         # ["linear", "cosine"]
+    action_chunk_size: Optional[int] = None          # if None, read from checkpoint config and fall back to 1
+    chunk_replan_interval: int = 1                   # closed-loop replanning interval in env steps
+    use_chunk_ensembling: bool = True                # fuse overlapping chunk predictions when replanning
+    chunk_ensemble_decay: float = 0.6                # temporal decay for older chunk votes
     action_tokenizer: str = "default"                # placeholder for future tokenizer switch
     train_token_masking: bool = False                # whether checkpoint used action token masking during training
 
@@ -240,8 +250,18 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
     if cfg.model_family == "openvla":
         processor = get_processor(cfg)
 
+    if cfg.action_chunk_size is None:
+        cfg.action_chunk_size = int(getattr(getattr(model, "config", None), "action_chunk_size", 1) or 1)
+    if cfg.action_chunk_size < 1:
+        raise ValueError(f"action_chunk_size must be >= 1, got {cfg.action_chunk_size}")
+    if cfg.chunk_replan_interval < 1:
+        raise ValueError(f"chunk_replan_interval must be >= 1, got {cfg.chunk_replan_interval}")
+
     # Initialize local logging
-    run_id = f"EVAL-{cfg.task_suite_name}-{cfg.model_family}-{cfg.decoder_type}-{DATE_TIME}"
+    run_id = (
+        f"EVAL-{cfg.task_suite_name}-{cfg.model_family}-{cfg.decoder_type}"
+        f"-h{cfg.action_chunk_size}-rp{cfg.chunk_replan_interval}-{DATE_TIME}"
+    )
     if cfg.run_id_note is not None:
         run_id += f"--{cfg.run_id_note}"
     if cfg.robustness_eval:
@@ -273,6 +293,13 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
     param_stats = _count_params(model)
     log_file.write(f"Model params (total/trainable): {param_stats['total']}/{param_stats['trainable']}\n")
     print(f"Model params (total/trainable): {param_stats['total']}/{param_stats['trainable']}")
+
+    control_mode = (
+        f"Control: chunk={cfg.action_chunk_size}, replan={cfg.chunk_replan_interval}, "
+        f"ensemble={cfg.use_chunk_ensembling and cfg.action_chunk_size > 1}, decay={cfg.chunk_ensemble_decay}"
+    )
+    print(control_mode)
+    log_file.write(control_mode + "\n")
 
     # Start evaluation
     def _run_eval_pass(pass_name: str, apply_perturbations: bool) -> Dict[str, Any]:
@@ -323,8 +350,16 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
 
                 # Setup
                 t = 0
+                policy_t = 0
                 replay_images = []
                 episode_start = time.perf_counter()
+                latest_action_flow = None
+                latest_chunk_start = None
+                chunk_ensembler = (
+                    ActionChunkEnsembler(decay=cfg.chunk_ensemble_decay)
+                    if cfg.use_chunk_ensembling and cfg.action_chunk_size > 1
+                    else None
+                )
                 if cfg.task_suite_name == "libero_spatial":
                     max_steps = 220  # longest training demo has 193 steps
                 elif cfg.task_suite_name == "libero_object":
@@ -374,15 +409,34 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
                             ),
                         }
 
-                        # Query model to get action
+                        # Query model to get the latest action flow and execute the current receding-horizon step
                         t0 = time.perf_counter()
-                        action = get_action(
-                            cfg,
-                            model,
-                            observation,
-                            task_description_eval,
-                            processor=processor,
-                        )
+                        needs_replan = latest_action_flow is None or should_replan(policy_t, cfg.chunk_replan_interval)
+                        if latest_action_flow is not None and latest_chunk_start is not None:
+                            if policy_t - latest_chunk_start >= latest_action_flow.shape[0]:
+                                needs_replan = True
+
+                        if needs_replan:
+                            latest_action_flow = ensure_action_flow(
+                                get_action_flow(
+                                    cfg,
+                                    model,
+                                    observation,
+                                    task_description_eval,
+                                    processor=processor,
+                                )
+                            )
+                            latest_chunk_start = policy_t
+                            if chunk_ensembler is not None:
+                                chunk_ensembler.add(policy_t, latest_action_flow)
+
+                        if latest_action_flow is None or latest_chunk_start is None:
+                            raise RuntimeError("No action flow available for execution")
+
+                        if chunk_ensembler is not None:
+                            action = chunk_ensembler.get_action(policy_t)
+                        else:
+                            action = get_action_from_chunk(latest_action_flow, latest_chunk_start, policy_t)
                         per_step_times.append(time.perf_counter() - t0)
 
                         # Normalize gripper action [0,1] -> [-1,+1] because the environment expects the latter
@@ -395,11 +449,12 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
 
                         # Execute action in environment
                         obs, reward, done, info = env.step(action.tolist())
+                        t += 1
+                        policy_t += 1
                         if done:
                             task_successes += 1
                             total_successes += 1
                             break
-                        t += 1
 
                     except Exception as e:
                         print(f"Caught exception: {e}")
@@ -480,7 +535,9 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
         "run_id": run_id,
         "task_suite": cfg.task_suite_name,
         "success_rate_total": clean_sr,
+        "clean_success_rate_total": clean_sr,
         "per_task_success": clean_results["per_task_success"],
+        "clean_per_task_success": clean_results["per_task_success"],
         "num_episodes": clean_results["num_episodes"],
         "seed": cfg.seed,
         "pretrained_checkpoint": str(cfg.pretrained_checkpoint),
@@ -489,6 +546,11 @@ def eval_libero(cfg: EvalConfig, config_yaml: Optional[str] = None) -> None:
         "diffusion_steps": cfg.diffusion_steps,
         "diffusion_mask_schedule": cfg.diffusion_mask_schedule,
         "mask_schedule": cfg.diffusion_mask_schedule,
+        "action_chunk_size": cfg.action_chunk_size,
+        "chunk_replan_interval": cfg.chunk_replan_interval,
+        "use_chunk_ensembling": cfg.use_chunk_ensembling,
+        "chunk_ensemble_decay": cfg.chunk_ensemble_decay,
+        "policy_mode": "rhaf" if cfg.action_chunk_size > 1 else "single_step",
         "action_tokenizer": cfg.action_tokenizer,
         "train_token_masking": cfg.train_token_masking,
         "robustness_eval": cfg.robustness_eval,

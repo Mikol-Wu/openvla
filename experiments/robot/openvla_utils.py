@@ -135,6 +135,7 @@ def get_vla_action(
     decoder_type: str = "ar",
     diffusion_steps: int = 10,
     diffusion_mask_schedule: str = "linear",
+    action_chunk_size: int = 1,
 ):
     """Generates an action with the VLA policy."""
     image = Image.fromarray(obs["full_image"])
@@ -184,5 +185,6 @@ def get_vla_action(
         decoder_type=decoder_type,
         diffusion_steps=diffusion_steps,
         diffusion_mask_schedule=diffusion_mask_schedule,
+        action_chunk_size=action_chunk_size,
     )
     return action

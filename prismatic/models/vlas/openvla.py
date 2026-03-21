@@ -33,6 +33,17 @@ class OpenVLA(PrismaticVLM):
         self.norm_stats = norm_stats
         self.action_tokenizer = action_tokenizer
 
+    @staticmethod
+    def _resolve_action_chunk_size(action_chunk_size: Optional[int]) -> int:
+        action_chunk_size = 1 if action_chunk_size is None else int(action_chunk_size)
+        if action_chunk_size < 1:
+            raise ValueError(f"action_chunk_size must be >= 1, got {action_chunk_size}")
+        return action_chunk_size
+
+    @staticmethod
+    def _reshape_action_flow(actions: np.ndarray, action_dim: int, action_chunk_size: int) -> np.ndarray:
+        return actions if action_chunk_size == 1 else actions.reshape(action_chunk_size, action_dim)
+
     @torch.inference_mode()
     def predict_action(
         self,
@@ -42,6 +53,7 @@ class OpenVLA(PrismaticVLM):
         decoder_type: str = "ar",
         diffusion_steps: int = 10,
         diffusion_mask_schedule: str = "linear",
+        action_chunk_size: Optional[int] = None,
         **kwargs: str,
     ) -> np.ndarray:
         """
@@ -52,9 +64,10 @@ class OpenVLA(PrismaticVLM):
         @param unnorm_key: Optional dataset name for retrieving un-normalizing statistics; if None, checks that model
                            was trained only on a single dataset, and retrieves those statistics.
 
-        @return Unnormalized (continuous) action vector --> end-effector deltas.
+        @return Unnormalized (continuous) action vector or action flow.
         """
         image_transform, tokenizer = self.vision_backbone.image_transform, self.llm_backbone.tokenizer
+        action_chunk_size = self._resolve_action_chunk_size(action_chunk_size)
 
         # Build VLA Prompt
         prompt_builder = self.get_prompt_builder()
@@ -85,6 +98,7 @@ class OpenVLA(PrismaticVLM):
             raise ValueError(f"Unsupported `pixel_values` type = {type(pixel_values)}")
 
         action_dim = self.get_action_dim(unnorm_key)
+        n_action_tokens = action_dim * action_chunk_size
 
         if decoder_type == "diffusion":
             mask_token_id = tokenizer.pad_token_id
@@ -100,7 +114,7 @@ class OpenVLA(PrismaticVLM):
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 pixel_values=pixel_values,
-                action_dim=action_dim,
+                action_dim=n_action_tokens,
                 steps=diffusion_steps,
                 schedule=diffusion_mask_schedule,
                 action_vocab_start=action_vocab_start,
@@ -114,14 +128,15 @@ class OpenVLA(PrismaticVLM):
                 generated_ids = super(PrismaticVLM, self).generate(
                     input_ids=input_ids,                            # Shape: [1, seq]
                     pixel_values=pixel_values,                      # Shape: [1, 3, res, res] or Dict[str, ...]
-                    max_new_tokens=action_dim,
+                    max_new_tokens=n_action_tokens,
                     **kwargs
                 )
                 # fmt: on
 
             # Extract predicted action tokens and translate into (normalized) continuous actions
-            predicted_action_token_ids = generated_ids[0, -action_dim:]
+            predicted_action_token_ids = generated_ids[0, -n_action_tokens:]
         normalized_actions = self.action_tokenizer.decode_token_ids_to_actions(predicted_action_token_ids.cpu().numpy())
+        normalized_actions = self._reshape_action_flow(normalized_actions, action_dim, action_chunk_size)
 
         # Un-normalize Actions
         action_norm_stats = self.get_action_stats(unnorm_key)
